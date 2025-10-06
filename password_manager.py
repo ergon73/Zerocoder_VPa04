@@ -5,12 +5,22 @@
 CLI-приложение для хранения паролей с шифрованием
 """
 
+import sys
+import os
+
+# Исправление кодировки для Windows
+if sys.platform.startswith('win'):
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+    # Устанавливаем переменную окружения для Python
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+
 import sqlite3
 import hashlib
 import string
 import random
 import getpass
-import os
 from cryptography.fernet import Fernet
 
 class DatabaseManager:

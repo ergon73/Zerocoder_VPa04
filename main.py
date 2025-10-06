@@ -5,6 +5,17 @@
 Главный файл для запуска напоминалки
 """
 
+import sys
+import os
+
+# Исправление кодировки для Windows
+if sys.platform.startswith('win'):
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+    # Устанавливаем переменную окружения для Python
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+
 from database import ReminderDatabase
 from notifications import NotificationManager
 from gui import ReminderApp

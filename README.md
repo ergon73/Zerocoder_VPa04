@@ -38,6 +38,39 @@ python main.py
 python password_manager.py
 ```
 
+## 🔧 Решение проблем с кодировкой
+
+### Автоматическое решение
+
+Приложения автоматически исправляют проблемы с кодировкой на Windows. Если вы видите нечитаемые символы, попробуйте:
+
+### Ручное решение для Windows
+
+**PowerShell:**
+```powershell
+$env:PYTHONIOENCODING="utf-8"
+python main.py
+```
+
+**Command Prompt:**
+```cmd
+chcp 65001
+python main.py
+```
+
+**Или через cmd из PowerShell:**
+```powershell
+cmd /c "chcp 65001 && python main.py"
+```
+
+### Постоянное решение
+
+Добавьте в профиль PowerShell (`$PROFILE`):
+```powershell
+$env:PYTHONIOENCODING="utf-8"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+```
+
 ## 📝 Напоминалка (Desktop-приложение)
 
 ### Возможности
