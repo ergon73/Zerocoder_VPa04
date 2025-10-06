@@ -144,6 +144,9 @@ class ReminderApp:
     
     def refresh_reminders(self):
         """Обновить список напоминаний"""
+        # Обрабатываем повторяющиеся напоминания
+        self.database.process_recurring_reminders()
+        
         # Очищаем список
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -173,6 +176,10 @@ class ReminderApp:
         reminder_id = item['values'][0]
         
         self.database.update_status(reminder_id, "Готово")
+        
+        # Обработать повторяющиеся напоминания
+        self.database.process_recurring_reminders()
+        
         self.refresh_reminders()
     
     def delete_reminder(self):
@@ -227,7 +234,7 @@ class AddReminderDialog:
         
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Добавить напоминание")
-        self.dialog.geometry("400x300")
+        self.dialog.geometry("450x450")
         self.dialog.resizable(False, False)
         self.dialog.transient(parent)
         self.dialog.grab_set()
@@ -262,8 +269,8 @@ class AddReminderDialog:
         time_frame = ttk.Frame(main_frame)
         time_frame.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         
-        # Устанавливаем время по умолчанию (через час)
-        default_time = datetime.now() + timedelta(hours=1)
+        # Устанавливаем время по умолчанию (через 5 минут)
+        default_time = datetime.now() + timedelta(minutes=5)
         
         self.date_var = tk.StringVar(value=default_time.strftime("%Y-%m-%d"))
         self.time_var = tk.StringVar(value=default_time.strftime("%H:%M"))
@@ -271,17 +278,48 @@ class AddReminderDialog:
         ttk.Entry(time_frame, textvariable=self.date_var, width=12).pack(side="left", padx=(0, 5))
         ttk.Entry(time_frame, textvariable=self.time_var, width=8).pack(side="left")
         
+        # Повторяющееся напоминание
+        self.is_recurring_var = tk.BooleanVar()
+        recurring_check = ttk.Checkbutton(main_frame, text="Повторяющееся напоминание", 
+                                        variable=self.is_recurring_var, command=self.toggle_recurring)
+        recurring_check.grid(row=6, column=0, columnspan=2, sticky="w", pady=(10, 5))
+        
+        # Настройки повторения (скрыты по умолчанию)
+        self.recurring_frame = ttk.Frame(main_frame)
+        self.recurring_frame.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        
+        ttk.Label(self.recurring_frame, text="Повторять каждые:").pack(side="left", padx=(0, 5))
+        
+        self.interval_var = tk.StringVar(value="1")
+        interval_entry = ttk.Entry(self.recurring_frame, textvariable=self.interval_var, width=5)
+        interval_entry.pack(side="left", padx=(0, 5))
+        
+        self.unit_var = tk.StringVar(value="часов")
+        unit_combo = ttk.Combobox(self.recurring_frame, textvariable=self.unit_var, 
+                                 values=["минут", "часов", "дней"], state="readonly", width=8)
+        unit_combo.pack(side="left")
+        
+        # Скрываем настройки повторения по умолчанию
+        self.recurring_frame.grid_remove()
+        
         ttk.Label(time_frame, text="(ГГГГ-ММ-ДД ЧЧ:ММ)").pack(side="left", padx=5)
         
         # Кнопки
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=6, column=0, columnspan=2, pady=(20, 0))
+        button_frame.grid(row=8, column=0, columnspan=2, pady=(20, 0), sticky="ew")
         
         ttk.Button(button_frame, text="Добавить", command=self.add_reminder).pack(side="left", padx=(0, 10))
         ttk.Button(button_frame, text="Отмена", command=self.cancel).pack(side="left")
         
         # Фокус на поле названия
         self.title_entry.focus()
+    
+    def toggle_recurring(self):
+        """Показать/скрыть настройки повторения"""
+        if self.is_recurring_var.get():
+            self.recurring_frame.grid()
+        else:
+            self.recurring_frame.grid_remove()
     
     def add_reminder(self):
         """Добавить напоминание"""
@@ -301,7 +339,27 @@ class AddReminderDialog:
                 messagebox.showerror("Ошибка", "Время напоминания должно быть в будущем!")
                 return
             
-            self.database.add_reminder(title, description, due_time)
+            # Параметры повторения
+            is_recurring = self.is_recurring_var.get()
+            recurring_interval = 0
+            recurring_unit = 'minutes'
+            
+            if is_recurring:
+                try:
+                    recurring_interval = int(self.interval_var.get())
+                    if recurring_interval <= 0:
+                        messagebox.showerror("Ошибка", "Интервал повторения должен быть больше 0!")
+                        return
+                    
+                    # Преобразуем единицы измерения
+                    unit_map = {"минут": "minutes", "часов": "hours", "дней": "days"}
+                    recurring_unit = unit_map.get(self.unit_var.get(), "minutes")
+                    
+                except ValueError:
+                    messagebox.showerror("Ошибка", "Неверный интервал повторения!")
+                    return
+            
+            self.database.add_reminder(title, description, due_time, is_recurring, recurring_interval, recurring_unit)
             self.result = True
             self.dialog.destroy()
             
